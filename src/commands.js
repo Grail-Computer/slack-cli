@@ -3,7 +3,7 @@
  */
 
 import { slackApi, slackPaginate } from "./api.js";
-import { getCredentials } from "./auth.js";
+import { uploadFile } from "./upload.js";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -183,6 +183,15 @@ export async function send(channelRef, text) {
     console.error(`❌ Failed: ${data.error}`);
     process.exit(1);
   }
+}
+
+export async function upload(channelRef, filePath, caption = "") {
+  const result = await uploadFile(channelRef, filePath, caption, {
+    resolveChannel,
+    slackApi,
+  });
+  const fileId = result.file?.id ? `, file: ${result.file.id}` : "";
+  console.log(`✅ Uploaded to ${channelRef}${fileId}`);
 }
 
 export async function search(query, count = 20) {

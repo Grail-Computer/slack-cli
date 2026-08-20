@@ -23,6 +23,7 @@ Commands:
   slk users             (u)               List workspace users with statuses
   slk read <ch> [n]     (r)               Read last n messages (default: 20)
   slk send <ch> <msg>   (s)               Send a message
+  slk upload <ch> <file> [caption]         Upload and share a file
   slk search <query> [n]                  Search messages across workspace
   slk thread <ch> <ts> [n]  (t)           Read thread replies (default: 50)
   slk react <ch> <ts> <emoji>             Add emoji reaction
@@ -55,6 +56,7 @@ Examples:
   slk read @nikhil --from 2026-02-01      Read DM from Feb 1st onwards
   slk send @andrej "hey!"                 Send DM to Andrej
   slk send engineering "build passed"     Send to #engineering
+  slk upload @andrej screenshot.png "Here it is"  Upload a file in a DM
   slk search "deploy failed" 10           Search with limit
   slk thread general 1706000000.000000    Read a thread
   slk react @andrej 1706000000.000000 eyes  React to DM message
@@ -109,6 +111,11 @@ async function main() {
       case "s":
         if (!args[1] || !args[2]) { console.error("Usage: slk send <channel> <message>"); process.exit(1); }
         await cmd.send(args[1], args.slice(2).join(" "));
+        break;
+
+      case "upload":
+        if (!args[1] || !args[2]) { console.error("Usage: slk upload <channel|@user> <file> [caption]"); process.exit(1); }
+        await cmd.upload(args[1], args[2], args.slice(3).join(" "));
         break;
 
       case "search":

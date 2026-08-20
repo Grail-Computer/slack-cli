@@ -3,6 +3,7 @@
  */
 
 import { getCredentials, refresh } from "./auth.js";
+import { formEncodeParams, usesFormEncoding } from "./request.js";
 
 const BASE = "https://slack.com/api";
 
@@ -23,6 +24,8 @@ export async function slackApi(method, params = {}, retried = false) {
     "reactions.add",
     "reactions.remove",
     "files.upload",
+    "files.getUploadURLExternal",
+    "files.completeUploadExternal",
     "drafts.create",
     "drafts.delete",
     "drafts.update",
@@ -36,14 +39,17 @@ export async function slackApi(method, params = {}, retried = false) {
   let res;
 
   if (isWrite) {
+    const formEncoded = usesFormEncoding(method);
     res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         Cookie: `d=${cookie}`,
-        "Content-Type": "application/json; charset=utf-8",
+        "Content-Type": formEncoded
+          ? "application/x-www-form-urlencoded"
+          : "application/json; charset=utf-8",
       },
-      body: JSON.stringify(params),
+      body: formEncoded ? formEncodeParams(params) : JSON.stringify(params),
     });
   } else {
     for (const [k, v] of Object.entries(params)) {

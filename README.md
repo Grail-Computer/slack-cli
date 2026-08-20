@@ -1,6 +1,6 @@
-# slk 💬 — Slack CLI for macOS, so your agents can read and send messages
+# slk 💬 — Slack CLI for macOS, so your agents can read, send, and share files
 
-`slk` is a Slack command-line tool for macOS that auto-extracts auth from the Slack desktop app. Read channels, send messages, search, manage drafts, track unreads, and view pins — no tokens, no OAuth, no config.
+`slk` is a Slack command-line tool for macOS that auto-extracts auth from the Slack desktop app. Read channels, send messages and files, search, manage drafts, track unreads, and view pins — no tokens, no OAuth, no config.
 
 Built for AI agents and terminal workflows. Zero dependencies. Zero setup.
 
@@ -50,6 +50,10 @@ slk read C08A8AQ2AFP        # by channel ID
 # Send a message
 slk send general "Hello from slk"
 
+# Upload a file with an optional caption
+slk upload general ./report.pdf "Latest report"
+slk upload @andrej ./screenshot.png "Here it is"
+
 # Search across the workspace
 slk search "deployment failed"
 
@@ -82,6 +86,7 @@ slk react general 1234567890.123456 thumbsup
 | `slk users` | `u` | List workspace users with statuses |
 | `slk read <channel> [count]` | `r` | Read recent messages (default: 20) |
 | `slk send <channel> <message>` | `s` | Send a message to a channel |
+| `slk upload <channel> <file> [caption]` | | Upload and share a file with an optional caption |
 | `slk search <query> [count]` | | Search messages across the workspace |
 | `slk thread <channel> <ts> [count]` | `t` | Read thread replies (default: 50) |
 | `slk react <channel> <ts> <emoji>` | | Add an emoji reaction to a message |
@@ -135,7 +140,7 @@ slk read C08A8AQ2AFP       # by ID
 
 ### DMs
 
-Read, send, and react to DMs using `@username` or user ID:
+Read, send, upload to, and react to DMs using `@username` or user ID:
 
 ```bash
 # List all DM conversations
@@ -150,6 +155,9 @@ slk read @andrej 100 --from 2026-02-01 --to 2026-02-07 --threads
 
 # Send DM
 slk send @andrej "hey, check this out"
+
+# Upload a file in a DM
+slk upload @andrej ./screenshot.png "Here it is"
 
 # React to DM message
 slk react @andrej 1769753479.788949 fire
@@ -235,6 +243,9 @@ slk pins engineering
 # Send a message
 slk send engineering "Build passed on main"
 
+# Share a file (caption is optional)
+slk upload engineering ./build-report.txt "Build report"
+
 # Read a thread for full context
 slk thread engineering 1706000000.000000
 
@@ -274,4 +285,5 @@ npm link                   # symlink globally for development
 - **Slack desktop app required** — must be installed and logged in. The app does not need to be running for cached tokens.
 - **Zero dependencies** — uses only Node.js built-in modules (`crypto`, `fs`, `child_process`, `fetch`).
 - **Session-based** — uses `xoxc-` tokens (user session), not bot tokens. This means you act as yourself.
+- **Current file-upload flow** — uses Slack's `files.getUploadURLExternal` and `files.completeUploadExternal` APIs, with file bytes streamed to Slack's one-time upload URL.
 - **Mute-aware** — `activity` and `unread` commands respect your mute settings.

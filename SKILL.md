@@ -1,6 +1,6 @@
 ---
 name: slack-personal
-description: Read, send, search, and manage Slack messages and DMs via the slk CLI. Use when the user asks to check Slack, read channels or DMs, send Slack messages, search Slack, check unreads, manage drafts, view saved items, or interact with Slack workspace. Also use for heartbeat Slack checks. Triggers on "check slack", "any slack messages", "send on slack", "slack unreads", "search slack", "slack threads", "draft on slack", "read slack dms", "message on slack".
+description: Read, send, upload, search, and manage Slack messages and DMs via the slk CLI. Use when the user asks to check Slack, read channels or DMs, send Slack messages or files, search Slack, check unreads, manage drafts, view saved items, or interact with Slack workspace. Also use for heartbeat Slack checks. Triggers on "check slack", "any slack messages", "send on slack", "upload to slack", "slack unreads", "search slack", "slack threads", "draft on slack", "read slack dms", "message on slack".
 homepage: https://www.npmjs.com/package/slkcli
 metadata: {"moltbot":{"emoji":"💬","requires":{"bins":["slk"]},"install":[{"id":"npm","kind":"node","package":"slkcli","bins":["slk"],"label":"Install slk (npm)"}],"os":["darwin"]}}
 ---
@@ -35,6 +35,7 @@ slk pins <channel>                    # Pinned items in a channel (alias: pin)
 
 # Write
 slk send <channel> <message>          # Send a message (alias: s)
+slk upload <channel> <file> [caption] # Upload and share a file
 slk react <channel> <ts> <emoji>      # React to a message
 
 # Drafts (synced to Slack editor UI)
@@ -86,6 +87,7 @@ slk thread general 1769753479.788949
 - **Thread monitoring** — Watch specific threads for new replies (incidents, PR reviews, decisions)
 - **Draft for human review** — `slk draft <channel> "..."` posts to Slack's editor UI for human to review before sending
 - **Search-driven context** — `slk search "deployment process"` or `slk pins <channel>` to pull context before answering questions
+- **Share a local artifact** — `slk upload @username ./screenshot.png "Optional caption"` after confirming the destination and file with the user
 
 ## Limitations
 
