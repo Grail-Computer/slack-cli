@@ -1,0 +1,21 @@
+name: Rust verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.92.0 --profile minimal --component rustfmt --component clippy
+      - run: rustup override set 1.92.0
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: ./scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-candidates
+          path: dist/

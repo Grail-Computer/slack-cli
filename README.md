@@ -1,135 +1,209 @@
-# Grail Messaging CLI
+# Slack CLI for macOS
 
-Private Grail distribution of [slkcli](https://github.com/therohitdas/slkcli),
-with our macOS authentication fixes included. Use `slk` for agent-driven Slack
-access instead of computer/browser automation or the Codex Slack connector.
+**Slack from your terminal or coding agent. One Rust executable.**
 
-## Install on your Mac
+`slk` reads conversations, searches messages, replies to threads, uploads files,
+and manages drafts using the account already signed into Slack Desktop.
+No Node.js, Python, Homebrew, Rust toolchain, or database installation is needed
+to run a release binary.
 
-Prerequisites: Node.js 18+, Git, and the Slack desktop app signed into your own
-Grail Computer account. You also need GitHub access to this private repository.
+[Download the latest release](https://github.com/Grail-Computer/slack-cli/releases/latest)
+· [WhatsApp CLI](https://github.com/Grail-Computer/whatsapp-cli)
+· [Command guide for agents](AGENTS.md)
 
-```bash
-git clone https://github.com/Grail-Computer/slack-cli.git
-cd slack-cli
-npm install -g . --ignore-scripts
+## Install
+
+Requires macOS 11 or newer and Slack Desktop signed in. Supports both Apple
+Silicon (M-series) and Intel Macs. This project is independent of Slack; it is
+not an official Slack SDK or the `slack` app-development CLI.
+
+1. Open the release page and download `slk-macos-arm64.tar.gz` for Apple Silicon,
+   or `slk-macos-x86_64.tar.gz` for Intel. **About This Mac** shows your chip.
+2. Extract the archive. It contains `slk`, this README, and the license.
+3. In Terminal, install the extracted executable:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+# Run this in the folder containing the extracted slk file:
+install -m 755 ./slk "$HOME/.local/bin/slk"
+export PATH="$HOME/.local/bin:$PATH"
+slk --version
 slk auth
 ```
 
-If GitHub asks you to authenticate, use your own account (or run `gh auth login`
-and `gh auth setup-git` first). Do not use sudo for npm; use a user-owned Node
-installation such as nvm if permissions prevent installation.
+Add `export PATH="$HOME/.local/bin:$PATH"` to `~/.zshrc` once to keep it available
+in new terminals. Existing npm users should check `which -a slk` and put
+`~/.local/bin` first in PATH. The Rust version can reuse the existing session
+cache. The old npm installation is no longer required.
 
-On first authentication, macOS may ask to access **Slack Safe Storage** in
-Keychain. Enter your **Mac login/Keychain password** in the macOS dialog and click
-**Always Allow** (sometimes labelled **Always Allow Access**). Do this locally;
-never send the password to a person or agent. This is not your Slack password.
+The downloads are ad-hoc signed, **not Apple-notarized**. macOS may block a
+browser download. After verifying the release and checksum, allow that specific
+binary in System Settings → Privacy & Security. If macOS still quarantines the
+file, `xattr -d com.apple.quarantine "$HOME/.local/bin/slk"` removes quarantine
+from that file only; do not disable Gatekeeper globally.
 
-Check that `slk auth` shows your own user in **Grail Computer**. Each teammate
-uses their own Slack permissions. The CLI caches the session with owner-only
-file permissions, so ordinary later commands should not repeat the prompt.
-Logout, session revocation, Keychain changes or OS updates may require approval
-again; this is not a guarantee of permanent authentication.
+`SHA256SUMS` accompanies each release. Verify the downloaded archive with
+`shasum -a 256 slk-macos-arm64.tar.gz` (or the Intel filename) and compare it
+with the matching line in `SHA256SUMS` before installing.
 
-## Use
+## First authentication
 
-```bash
+On first use, macOS may ask for access to **Slack Safe Storage**. Enter your
+**Mac login / Keychain password** in the native dialog and click **Always Allow**
+(or **Always Allow Access**). This is not your Slack password. Never paste it
+into a terminal command, agent chat, or issue.
+
+`slk auth` reports the user and workspace; verify these before sending anything.
+Commands act with that user's permissions. The CLI validates its cached session
+on each run and refreshes it from Slack Desktop when necessary. Keychain changes,
+logout, revoked sessions, or a changed executable can require approval again.
+With multiple signed-in workspaces, selection follows the first valid desktop
+session found; use `auth` to check it. There is no workspace selector in v1.
+
+```sh
 slk auth
-slk read grail-dev 20
-slk thread C0636658G9J 1788793776.191449 100
-slk search 'in:grail-dev setup'
-slk send grail-dev "Your approved message"
-slk upload grail-dev /absolute/path/to/file "Your approved caption"
+slk auth --refresh  # Re-read the desktop session and Keychain
 ```
 
-Only send, edit, delete, react or upload when the user authorizes it. For an
-agent, put the following in your personal/project instructions:
+Credentials are cached at `~/.local/slk/token-cache.json` (file mode `0600`,
+directory `0700`). Never share or commit this file. No session credentials are
+printed or passed to subprocesses. Requests use HTTPS directly from the binary.
+The Slack cookie database is opened read-only; the CLI does not alter app files.
 
-> Use `slk` (Grail Slack CLI) for Slack. Do not use computer/browser automation
-> or the official Codex Slack plugin/connector, including as fallbacks. Read
-> this repository's README before Slack work. If authentication fails,
-> troubleshoot the CLI or report the blocker. Verify the intended workspace and
-> user before writes, preserve real newlines, and read messages back afterward.
+## Everyday commands
 
-Full command reference: [upstream README](README.upstream.md).
+All successful commands print JSON to stdout. Errors print JSON to stderr and
+exit nonzero; help/argument errors use the normal CLI help format. Output may
+contain private conversations, so protect redirected files accordingly.
 
-## Threads and attachments
-
-The stock send/upload commands post to a channel. For thread replies, use
-`slackApi` from `src/api.js` with `chat.postMessage` and an explicit `thread_ts`.
-For uploads, use `uploadFile` from `src/upload.js` and pass `thread_ts` through
-its `slackApi` wrapper for `files.completeUploadExternal`. Never accidentally
-post a requested thread reply to the channel root.
-
-Verify replies with `conversations.replies`; verify attachment IDs and sharing
-with `files.info`. Slack may normalize email links in returned text. Inspect a
-successful post before retrying to avoid duplicates. Follow pagination cursors.
-
-## Updates and troubleshooting
-
-```bash
-# Inside this checkout; preserve any local changes first
-git pull --ff-only
-npm install -g . --ignore-scripts
-slk auth
+```sh
+slk channels
+slk dms
+slk users
+slk read general 20
+slk read @alex 100 --threads
+slk read general 100 --from 2026-01-01 --to 2026-02-01
+slk thread CHANNEL_ID THREAD_TIMESTAMP 100
+slk search 'in:general "release"' 20
+slk search 'in:general "release"' 20 --page 2
+slk unread
+slk activity
+slk pins general
+slk starred
+slk saved 20
+slk saved 20 --all
 ```
 
-If auth fails, check the Slack desktop app is signed in and approve the Keychain
-prompt. If the session cache is stale, remove only `~/.local/slk/token-cache.json`
-and retry `slk auth`. Never print or share that file: it holds session credentials.
-Do not copy another teammate's cache or credentials. Do not reinstall public npm
-`slkcli` over this distribution, because it lacks these included changes.
+Channels accept a name, `#name`, or exact channel ID. DMs accept `@username` or a
+user ID. Ambiguous names fail; use an exact ID. A read command never creates a
+new DM. `read` returns newest first; `thread` returns oldest first, including the
+parent. Date boundaries use UTC: `--from` is inclusive and `--to` exclusive.
+Search queries containing spaces must be quoted; search supports up to 100
+results per page.
 
-## Grail changes
+List/read/thread commands follow Slack cursors until the requested count is
+reached. If `has_more` is true, use `next_cursor` with `read --cursor` or
+`thread --cursor`; use `api` for other cursor-based endpoints. Search returns
+Slack's page metadata. A non-cursor `has_more` response requires inspecting the
+raw API response and continuing with that endpoint's pagination parameters.
+`--threads` expands each returned parent, potentially making many requests.
+Slack rate limits are reported with the retry interval; writes are never retried
+automatically because doing so could duplicate a message.
 
-- Cookie decryption runs inside Node, without an encryption key in process args.
-- Auth validation sends credentials to curl on stdin rather than process args.
-- Restrictive umask and owner-only token/cookie cache reduce repeated Keychain prompts.
-- Private package guard prevents accidental npm publication.
+## Send messages and files
 
-No npm runtime dependencies. WhatsApp commands additionally require Python 3.
-Run `npm test` before changing code. See
-[UPSTREAM.md](UPSTREAM.md) for provenance; the original MIT license is retained.
-
-## WhatsApp Mac access
-
-The same CLI now supports the native WhatsApp Mac app through `slk whatsapp`
-(or `slk wa`). It opens the local SQLite store strictly read-only; it does not
-copy the database, extract encryption keys, automate the UI or send messages.
-
-```bash
-slk whatsapp status
-slk whatsapp chats 'Group name' --limit 20
-slk whatsapp read 'EXACT_CHAT_ID_FROM_CHATS' --limit 50
-slk whatsapp search 'search text' --chat 'EXACT_CHAT_ID_FROM_CHATS' --limit 20
+```sh
+slk send general "Build passed"
+slk send CHANNEL_ID --thread THREAD_TIMESTAMP --text-file reply.txt
+slk upload CHANNEL_ID report.pdf "Review copy"
+slk upload CHANNEL_ID report.pdf --thread THREAD_TIMESTAMP --caption-file caption.txt
+slk react CHANNEL_ID MESSAGE_TIMESTAMP eyes
 ```
 
-Results are JSON, newest first. Continue with `--offset` using `next_offset`
-when `has_more` is true. `read` requires the exact ID to avoid ambiguous names.
-`status` reports local counts and the most recent stored message time, without
-printing message bodies. Search is literal case-insensitive SQLite substring
-matching (ASCII case-folding); it is not semantic search.
+Text files preserve real newlines. `--thread` keeps replies and attachments in
+the intended thread. After posting, read the thread back and verify the message
+or attachment ID; Slack may normalize links in the returned text. Inspect a
+successful or uncertain response before retrying.
 
-Requires Python 3 and WhatsApp Desktop signed in and synced on macOS. Some Macs
-may require Full Disk Access for the invoking terminal/Codex in System Settings.
-No Slack Keychain approval or separate QR login is required for this read path.
-The default source is
-`~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ChatStorage.sqlite`.
-An optional `--db PATH` accepts a compatible alternate store or test fixture.
-The internal schema is unofficial and may change with WhatsApp updates; schema
-mismatches fail explicitly. Out-of-range sentinel dates return null.
+## Drafts
 
-Only messages synced to this Mac are available. A successful query does not
-prove current phone/account history is complete. Media messages may have empty
-text; this version returns their message type, not attachment downloads.
-Reading does not mark messages as read. Treat all output as private and never
-commit or upload real conversations as fixtures.
+```sh
+slk draft general "Review this before sending"
+slk draft thread CHANNEL_ID THREAD_TIMESTAMP "Proposed reply"
+slk draft user USER_ID "Proposed DM"
+slk drafts
+slk draft drop DRAFT_ID
+```
 
-Sending without UI automation would require a separately paired protocol client
-(e.g. whatsmeow). It is not included or authenticated in this release. The
-WhatsApp Business API is a different account/product integration, not access to
-the existing personal Mac inbox.
+Drafts sync into Slack's UI. Drafts, saved items, preferences, and activity use
+internal Slack APIs that can change or be unavailable for some accounts. Such
+failures are reported explicitly; the CLI does not silently substitute a send.
 
-Verified locally against WhatsApp Mac 26.35.23: schema/status, chat listing and
-message reading. Synthetic tests cover pagination, exact IDs, literal query
-handling, sentinel dates, missing files and unchanged database bytes.
+## Direct API access
+
+Use `slk api` when you need a Slack endpoint that has no dedicated command.
+Parameters come from a JSON object in a file, preserving structured fields and
+newlines. This command can perform writes; review the method and parameters.
+
+```sh
+slk api auth.test
+slk api conversations.replies --params-file request.json
+```
+
+Example `request.json`:
+
+```json
+{"channel":"CHANNEL_ID","ts":"THREAD_TIMESTAMP","limit":100}
+```
+
+Use `files.info` to inspect attachment metadata and sharing. File downloads are
+not a dedicated v1 command. See `slk --help` and `slk COMMAND --help` for options.
+Aliases from the earlier CLI remain (`ch`, `dm`, `u`, `r`, `t`, `s`, `a`, `ur`,
+`star`, `sv`, `pin`). Output changed from decorated text to JSON. WhatsApp is now
+[its own CLI](https://github.com/Grail-Computer/whatsapp-cli), `wacli`.
+
+## Troubleshooting
+
+- **Wrong account or expired session:** sign into the intended Slack Desktop
+  account, then run `slk auth --refresh`. v1 has no account selector.
+- **Keychain denied:** retry refresh and approve the native dialog. Do not copy
+  another person's cache or credentials.
+- **Desktop data not found:** use the native Slack Mac app. Direct-download and
+  Mac App Store locations are supported; browser-only login is insufficient.
+- **Permission denied:** check access to Slack app data for your terminal/agent.
+- **Rate limited:** wait the interval shown, then retry the read. Check whether
+  an uncertain write succeeded before resending.
+- **Method/schema changed:** report the error and app version without tokens,
+  cookies, private messages, or database files. Internal APIs are unofficial.
+- **Old version still runs:** inspect `which -a slk` and correct PATH ordering.
+
+## Build and verify from source
+
+End users only need the download. Contributors need Rust 1.92+ and Xcode Command
+Line Tools. SQLite and TLS are linked into the executable; dynamic dependencies
+are macOS system libraries/frameworks. No helper executables run at runtime.
+
+```sh
+cargo test --locked
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --locked --release
+./target/release/slk --help
+./scripts/package.sh
+```
+
+The packaging script builds Apple Silicon and Intel archives in `dist/`, with
+SHA-256 checksums. CI runs tests/lint and builds both targets; live authentication
+requires your local Slack session and is never run with CI secrets.
+
+We bundle SQLite rather than using the Rust Turso engine because these are live
+SQLite files owned by another process. Turso's [compatibility guide](https://github.com/tursodatabase/turso/blob/main/COMPAT.md)
+explicitly excludes mixed SQLite/Turso multi-process access. This choice adds no
+installation dependency for users.
+
+## License and provenance
+
+MIT. Rust implementation maintained by Grail Computer, based on the workflows
+and authentication approach of Rohit Das's [slkcli](https://github.com/therohitdas/slkcli).
+Original license and source history are retained; see [UPSTREAM.md](UPSTREAM.md).
+Slack is a trademark of its owner; this project is not affiliated with Slack.

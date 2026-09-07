@@ -1,7 +1,13 @@
 # Provenance
 
-Private Grail copy of https://github.com/therohitdas/slkcli at `bbc88718a516bbb3f5ced0a561849eaf363a5430`.
-Original author: Rohit Das. Original MIT license and Git history are retained.
-GitHub public forks cannot be made private, so this is an independent private
-repository with an `upstream` remote. Review upstream changes before merging;
-retain Grail authentication fixes and `private: true`. Do not publish to npm.
+The earlier JavaScript CLI was based on Rohit Das's MIT-licensed
+https://github.com/therohitdas/slkcli at
+`bbc88718a516bbb3f5ced0a561849eaf363a5430`.
+
+Grail Computer's v1.0.0 replaces the runtime with Rust, preserves the original
+license and Git history, and separates WhatsApp into its own repository:
+https://github.com/Grail-Computer/whatsapp-cli.
+
+This is an independent public repository, not an official Slack product.
+The `upstream` remote is historical reference; do not merge JavaScript releases
+into the Rust implementation without an explicit porting plan.

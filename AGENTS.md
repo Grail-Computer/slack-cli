@@ -1,13 +1,19 @@
-# Grail Slack CLI development
+# Working on Slack CLI
 
-Keep this repository private. Preserve the upstream MIT license and provenance.
-This is a private team distribution; do not publish to npm or follow historical
-upstream deployment instructions. Read README.md for the user workflow.
+Read README.md for installation, authentication, command semantics and limitations.
+This repository is public. Keep real messages, cookies, tokens, databases and
+Keychain material out of code, fixtures, issues, logs and release artifacts.
 
-Authentication code handles real session credentials. Never log tokens, cookies,
-Keychain passwords, or decrypted credential material. Keep credentials out of
-process arguments. Cache files must remain owner-only. Live verification should
-use auth/read calls; sending or changing Slack data requires user authorization.
+Use the native `slk` executable for Slack operations. Verify `slk auth` before
+writes; sending, editing, deleting, reactions and uploads require the user's
+explicit authorization. Use `--text-file` / `--caption-file` for multiline text,
+`--thread` for replies, and read back writes before retrying an uncertain result.
 
-For code changes, run `npm test` and syntax-check affected Node modules. Update
-README/help when behavior changes. Preserve upstream attribution in UPSTREAM.md.
+Authentication uses the macOS Keychain API and a protected session cache.
+Preserve read-only app database access, owner-only cache permissions, bounded
+LevelDB parsing and credential-free diagnostics. Read commands must not create DMs.
+
+Run `cargo test --locked`, `cargo fmt --check`, and
+`cargo clippy --locked --all-targets -- -D warnings` after changes.
+Use synthetic fixtures; live smoke checks should output only counts/booleans.
+Run scripts/package.sh on macOS for releases; retain LICENSE and UPSTREAM.md.

@@ -1,7 +1,7 @@
-node_modules/
+/target/
+/dist/
+.local/
 .env
 .env.*
-.npmrc
-.local/
 *.log
 .DS_Store
