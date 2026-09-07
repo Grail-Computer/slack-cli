@@ -1,7 +1,7 @@
 {
   "name": "slkcli",
-  "version": "0.2.1-grail.1",
-  "description": "Slack CLI for macOS, so your agents can read, send, and upload files",
+  "version": "0.3.0-grail.1",
+  "description": "Grail messaging CLI: Slack and read-only native WhatsApp Mac access",
   "type": "module",
   "license": "MIT",
   "author": "Rohit Das",

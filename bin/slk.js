@@ -6,8 +6,7 @@
 
 process.umask(0o077);
 
-import * as cmd from "../src/commands.js";
-import * as drafts from "../src/drafts.js";
+import { whatsapp } from "../src/whatsapp.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -19,6 +18,7 @@ const e = (emoji, fallback = "") => supportsEmoji ? emoji + " " : fallback;
 const HELP = `${e("💬")}slk — Slack CLI for macOS (auto-auth from Slack desktop app)
 
 Commands:
+  slk whatsapp <command>                 Read/search the native WhatsApp Mac app
   slk auth                                Test auth, show user/team info
   slk channels          (ch)              List channels with member counts
   slk dms               (dm)              List DM conversations with IDs
@@ -72,6 +72,12 @@ Docs:  https://github.com/therohitdas/slkcli`;
 
 async function main() {
   try {
+    if (command === "whatsapp" || command === "wa") {
+      whatsapp(args.slice(1));
+      return;
+    }
+    const cmd = await import("../src/commands.js");
+    const drafts = await import("../src/drafts.js");
     switch (command) {
       case "auth":
         await cmd.auth();

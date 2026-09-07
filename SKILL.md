@@ -1,6 +1,6 @@
 ---
 name: grail-slack-cli
-description: Read Slack threads, search messages, and perform user-authorized Slack actions through Grail's local slk CLI.
+description: Read Slack or native WhatsApp Mac messages, and perform user-authorized Slack actions through Grail's slk CLI.
 ---
 
 # Grail Slack CLI
@@ -18,3 +18,7 @@ Read the entire requested thread, following pagination where needed. Perform
 external mutations only within the user's authorization. Preserve real newlines
 and verify posted text, thread and attachment IDs by reading them back. If a
 post succeeds but verification fails, inspect it before retrying.
+
+For WhatsApp, use `slk whatsapp` per README.md. Reads use the local Mac database;
+sending is unavailable. Check local sync freshness, use exact chat IDs, and keep
+private message output out of repositories and shared artifacts.

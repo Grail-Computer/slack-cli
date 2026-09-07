@@ -1,4 +1,4 @@
-# Grail Slack CLI
+# Grail Messaging CLI
 
 Private Grail distribution of [slkcli](https://github.com/therohitdas/slkcli),
 with our macOS authentication fixes included. Use `slk` for agent-driven Slack
@@ -87,5 +87,49 @@ Do not copy another teammate's cache or credentials. Do not reinstall public npm
 - Restrictive umask and owner-only token/cookie cache reduce repeated Keychain prompts.
 - Private package guard prevents accidental npm publication.
 
-No runtime dependencies. Run `npm test` before changing code. See
+No npm runtime dependencies. WhatsApp commands additionally require Python 3.
+Run `npm test` before changing code. See
 [UPSTREAM.md](UPSTREAM.md) for provenance; the original MIT license is retained.
+
+## WhatsApp Mac access
+
+The same CLI now supports the native WhatsApp Mac app through `slk whatsapp`
+(or `slk wa`). It opens the local SQLite store strictly read-only; it does not
+copy the database, extract encryption keys, automate the UI or send messages.
+
+```bash
+slk whatsapp status
+slk whatsapp chats 'Group name' --limit 20
+slk whatsapp read 'EXACT_CHAT_ID_FROM_CHATS' --limit 50
+slk whatsapp search 'search text' --chat 'EXACT_CHAT_ID_FROM_CHATS' --limit 20
+```
+
+Results are JSON, newest first. Continue with `--offset` using `next_offset`
+when `has_more` is true. `read` requires the exact ID to avoid ambiguous names.
+`status` reports local counts and the most recent stored message time, without
+printing message bodies. Search is literal case-insensitive SQLite substring
+matching (ASCII case-folding); it is not semantic search.
+
+Requires Python 3 and WhatsApp Desktop signed in and synced on macOS. Some Macs
+may require Full Disk Access for the invoking terminal/Codex in System Settings.
+No Slack Keychain approval or separate QR login is required for this read path.
+The default source is
+`~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ChatStorage.sqlite`.
+An optional `--db PATH` accepts a compatible alternate store or test fixture.
+The internal schema is unofficial and may change with WhatsApp updates; schema
+mismatches fail explicitly. Out-of-range sentinel dates return null.
+
+Only messages synced to this Mac are available. A successful query does not
+prove current phone/account history is complete. Media messages may have empty
+text; this version returns their message type, not attachment downloads.
+Reading does not mark messages as read. Treat all output as private and never
+commit or upload real conversations as fixtures.
+
+Sending without UI automation would require a separately paired protocol client
+(e.g. whatsmeow). It is not included or authenticated in this release. The
+WhatsApp Business API is a different account/product integration, not access to
+the existing personal Mac inbox.
+
+Verified locally against WhatsApp Mac 26.35.23: schema/status, chat listing and
+message reading. Synthetic tests cover pagination, exact IDs, literal query
+handling, sentinel dates, missing files and unchanged database bytes.
