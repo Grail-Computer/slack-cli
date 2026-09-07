@@ -1,17 +1,17 @@
 {
   "name": "slkcli",
-  "version": "0.2.0",
+  "version": "0.2.1-grail.1",
   "description": "Slack CLI for macOS, so your agents can read, send, and upload files",
   "type": "module",
   "license": "MIT",
   "author": "Rohit Das",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/therohitdas/slkcli.git"
+    "url": "git+https://github.com/Grail-Computer/slack-cli.git"
   },
-  "homepage": "https://github.com/therohitdas/slkcli",
+  "homepage": "https://github.com/Grail-Computer/slack-cli",
   "bugs": {
-    "url": "https://github.com/therohitdas/slkcli/issues"
+    "url": "https://github.com/Grail-Computer/slack-cli/issues"
   },
   "keywords": [
     "slack",
@@ -41,5 +41,6 @@
     "test": "node --test"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {},
+  "private": true
 }

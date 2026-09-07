@@ -4,6 +4,8 @@
  * slk — Slack CLI with auto-auth from macOS Slack desktop app.
  */
 
+process.umask(0o077);
+
 import * as cmd from "../src/commands.js";
 import * as drafts from "../src/drafts.js";
 

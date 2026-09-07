@@ -10,7 +10,7 @@ import { execSync, spawnSync } from "child_process";
 import { readFileSync, readdirSync, copyFileSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir, tmpdir } from "os";
-import { pbkdf2Sync } from "crypto";
+import { createDecipheriv, pbkdf2Sync } from "crypto";
 
 import { existsSync, mkdirSync } from "fs";
 
@@ -85,19 +85,9 @@ function decryptCookie() {
     const aesKey = pbkdf2Sync(getKeychainKey(), "saltysalt", 1003, 16, "sha1");
     const iv = Buffer.alloc(16, " ");
 
-    // Decrypt via openssl using spawnSync for clean binary output
-    const tmpEnc = join(tmpdir(), `slk_enc_${Date.now()}.bin`);
-    writeFileSync(tmpEnc, data);
-
-    const result = spawnSync("openssl", [
-      "enc", "-aes-128-cbc", "-d", "-nopad",
-      "-K", aesKey.toString("hex"),
-      "-iv", iv.toString("hex"),
-      "-in", tmpEnc,
-    ]);
-    const decrypted = result.stdout;
-
-    unlinkSync(tmpEnc);
+    const decipher = createDecipheriv("aes-128-cbc", aesKey, iv);
+    decipher.setAutoPadding(false);
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
 
     if (!decrypted || decrypted.length === 0) {
       throw new Error("Cookie decryption failed");
@@ -194,20 +184,18 @@ function loadTokenCache() {
   return null;
 }
 
-function saveTokenCache(token) {
+function saveTokenCache(token, cookie) {
   try {
-    mkdirSync(CACHE_DIR, { recursive: true });
-    writeFileSync(TOKEN_CACHE, JSON.stringify({ token, ts: Date.now() }));
+    mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+    writeFileSync(TOKEN_CACHE, JSON.stringify({ token, cookie, ts: Date.now() }), { mode: 0o600 });
   } catch {}
 }
 
 function validateToken(token, cookie) {
   try {
     const result = spawnSync("curl", [
-      "-s", "https://slack.com/api/auth.test",
-      "-H", `Authorization: Bearer ${token}`,
-      "-b", `d=${cookie}`,
-    ], { encoding: "utf-8", timeout: 10000 });
+      "-s", "--config", "-",
+    ], { input: `url = "https://slack.com/api/auth.test"\nheader = "Authorization: Bearer ${token}"\ncookie = "d=${cookie}"\n`, encoding: "utf-8", timeout: 10000 });
     const data = JSON.parse(result.stdout);
     return data.ok;
   } catch {
@@ -218,12 +206,18 @@ function validateToken(token, cookie) {
 export function getCredentials(forceRefresh = false) {
   if (cachedCreds && !forceRefresh) return cachedCreds;
 
+  const stored = !forceRefresh ? loadTokenCache() : null;
+  if (stored?.cookie && stored?.token && validateToken(stored.token, stored.cookie)) {
+    cachedCreds = { token: stored.token, cookie: stored.cookie };
+    return cachedCreds;
+  }
   const cookie = decryptCookie();
 
   // Try cached token first (fastest path)
   if (!forceRefresh) {
     const cache = loadTokenCache();
     if (cache?.token && validateToken(cache.token, cookie)) {
+      saveTokenCache(cache.token, cookie);
       cachedCreds = { token: cache.token, cookie };
       return cachedCreds;
     }
@@ -235,7 +229,7 @@ export function getCredentials(forceRefresh = false) {
   // Validate each candidate
   for (const token of candidates) {
     if (validateToken(token, cookie)) {
-      saveTokenCache(token);
+      saveTokenCache(token, cookie);
       cachedCreds = { token, cookie };
       return cachedCreds;
     }
