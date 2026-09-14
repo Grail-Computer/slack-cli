@@ -119,6 +119,8 @@ Messages sent through the CLI automatically end with the italicized footer
 `Sent by Agent`, so agent/automation messages are visually distinguishable from
 messages typed manually. The footer is also added to upload captions and direct
 `chat.postMessage` calls made through `slk api`; it is not added to drafts.
+Inline `\\n` sequences are converted to real line breaks, while text supplied
+with `--text-file` or `--caption-file` keeps its contents unchanged.
 
 ```sh
 slk send general "Build passed"

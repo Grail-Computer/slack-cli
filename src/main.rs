@@ -15,6 +15,10 @@ fn agent_message(text: String) -> String {
     format!("{}\n\n{}", text.trim_end(), AGENT_FOOTER)
 }
 
+fn normalize_inline_newlines(text: String) -> String {
+    text.replace("\\r\\n", "\n").replace("\\n", "\n")
+}
+
 #[derive(Parser)]
 #[command(
     version,
@@ -158,7 +162,7 @@ fn count(s: &str) -> std::result::Result<usize, String> {
 fn text(inline: Option<String>, path: Option<PathBuf>) -> Result<String> {
     let s = match path {
         Some(p) => fs::read_to_string(p).context("Cannot read text file")?,
-        None => inline.context("Message text is required")?,
+        None => normalize_inline_newlines(inline.context("Message text is required")?),
     };
     if s.trim().is_empty() {
         bail!("Message text is empty");
@@ -369,6 +373,11 @@ mod tests {
             agent_message("hello\n\n_Sent by Agent_".into()),
             "hello\n\n_Sent by Agent_"
         );
+    }
+    #[test]
+    fn inline_escaped_newlines_become_real_newlines() {
+        assert_eq!(text(Some("one\\ntwo".into()), None).unwrap(), "one\ntwo");
+        assert_eq!(text(Some("one\ntwo".into()), None).unwrap(), "one\ntwo");
     }
     #[test]
     fn cli_enforces_text_source_and_keeps_search_count_out_of_query() {
