@@ -57,12 +57,15 @@ into a terminal command, agent chat, or issue.
 Commands act with that user's permissions. The CLI validates its cached session
 on each run and refreshes it from Slack Desktop when necessary. Keychain changes,
 logout, revoked sessions, or a changed executable can require approval again.
-With multiple signed-in workspaces, selection follows the first valid desktop
-session found; use `auth` to check it. There is no workspace selector in v1.
+With multiple signed-in workspaces, the default is **Grail Computer**. To select
+a different workspace by its displayed name or team ID, pass `--workspace`; the
+selected credentials become the cache used by subsequent commands:
 
 ```sh
 slk auth
 slk auth --refresh  # Re-read the desktop session and Keychain
+slk auth --workspace "Grail Computer" --refresh
+slk auth --workspace T123456789 --refresh
 ```
 
 Credentials are cached at `~/.local/slk/token-cache.json` (file mode `0600`,
@@ -111,6 +114,11 @@ Slack rate limits are reported with the retry interval; writes are never retried
 automatically because doing so could duplicate a message.
 
 ## Send messages and files
+
+Messages sent through the CLI automatically end with the italicized footer
+`Sent by Agent`, so agent/automation messages are visually distinguishable from
+messages typed manually. The footer is also added to upload captions and direct
+`chat.postMessage` calls made through `slk api`; it is not added to drafts.
 
 ```sh
 slk send general "Build passed"
@@ -165,7 +173,9 @@ Aliases from the earlier CLI remain (`ch`, `dm`, `u`, `r`, `t`, `s`, `a`, `ur`,
 ## Troubleshooting
 
 - **Wrong account or expired session:** sign into the intended Slack Desktop
-  account, then run `slk auth --refresh`. v1 has no account selector.
+  account, then run `slk auth --workspace "Workspace Name" --refresh`. The
+  selector accepts the workspace name or team ID and reports available
+  workspaces if the requested one is not found.
 - **Keychain denied:** retry refresh and approve the native dialog. Do not copy
   another person's cache or credentials.
 - **Desktop data not found:** use the native Slack Mac app. Direct-download and

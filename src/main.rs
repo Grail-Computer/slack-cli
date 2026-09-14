@@ -6,12 +6,24 @@ use serde_json::{json, Value};
 use slack::Slack;
 use std::{fs, io::Write, path::PathBuf};
 
+const AGENT_FOOTER: &str = "_Sent by Agent_";
+
+fn agent_message(text: String) -> String {
+    if text.trim_end().ends_with(AGENT_FOOTER) {
+        return text;
+    }
+    format!("{}\n\n{}", text.trim_end(), AGENT_FOOTER)
+}
+
 #[derive(Parser)]
 #[command(
     version,
     about = "Standalone Slack CLI for macOS. Uses your Slack Desktop session; outputs JSON."
 )]
 struct Cli {
+    /// Select a Slack workspace name or team ID when multiple Desktop sessions exist
+    #[arg(long, global = true, value_name = "WORKSPACE")]
+    workspace: Option<String>,
     /// Compatibility flag: JSON always includes raw timestamps
     #[arg(long = "ts", global = true, hide = true)]
     show_ts: bool,
@@ -198,13 +210,13 @@ fn run(cli: Cli) -> Result<Value> {
     let prepared_text = match &cli.command {
         Command::Send {
             message, text_file, ..
-        } => Some(text(message.clone(), text_file.clone())?),
+        } => Some(agent_message(text(message.clone(), text_file.clone())?)),
         Command::Upload {
             caption,
             caption_file,
             ..
         } if caption.is_some() || caption_file.is_some() => {
-            Some(text(caption.clone(), caption_file.clone())?)
+            Some(agent_message(text(caption.clone(), caption_file.clone())?))
         }
         _ => None,
     };
@@ -234,7 +246,10 @@ fn run(cli: Cli) -> Result<Value> {
         )?),
         _ => None,
     };
-    let s = Slack::new(matches!(cli.command, Command::Auth { refresh: true }))?;
+    let s = Slack::new(
+        matches!(cli.command, Command::Auth { refresh: true }),
+        cli.workspace.as_deref(),
+    )?;
     match cli.command {
         Command::Auth{..}=>s.api("auth.test",json!({})),
         Command::Channels=>s.list("conversations.list",json!({"types":"public_channel,private_channel","exclude_archived":true}),"channels",100_000),
@@ -274,7 +289,15 @@ fn run(cli: Cli) -> Result<Value> {
             };
             let msg=text(Some(message),None)?;s.api("drafts.create",draft_params(s.resolve(channel,true)?,thread,msg))
         },
-        Command::Api{method,..}=>s.api(&method,params.unwrap_or(json!({}))),
+        Command::Api{method,..}=>{
+            let mut p=params.unwrap_or(json!({}));
+            if method == "chat.postMessage" {
+                if let Some(message) = p["text"].as_str() {
+                    p["text"] = json!(agent_message(message.to_string()));
+                }
+            }
+            s.api(&method,p)
+        },
     }
 }
 fn main() {
@@ -337,6 +360,14 @@ mod tests {
         assert_eq!(
             d["blocks"][0]["elements"][0]["elements"][0]["text"],
             "one\ntwo\n"
+        );
+    }
+    #[test]
+    fn agent_footer_is_distinguished_and_not_duplicated() {
+        assert_eq!(agent_message("hello".into()), "hello\n\n_Sent by Agent_");
+        assert_eq!(
+            agent_message("hello\n\n_Sent by Agent_".into()),
+            "hello\n\n_Sent by Agent_"
         );
     }
     #[test]

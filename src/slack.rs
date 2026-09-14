@@ -10,6 +10,7 @@ pub struct Slack {
     #[cfg(test)]
     endpoint: Option<String>,
 }
+const DEFAULT_WORKSPACE: &str = "Grail Computer";
 pub fn form(params: &Value) -> Vec<(String, String)> {
     params
         .as_object()
@@ -26,11 +27,15 @@ pub fn form(params: &Value) -> Vec<(String, String)> {
         .collect()
 }
 impl Slack {
-    pub fn new(refresh: bool) -> Result<Self> {
+    pub fn new(refresh: bool, workspace: Option<&str>) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(60))
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
+        let wanted = workspace.unwrap_or(DEFAULT_WORKSPACE);
+        // The cache intentionally stores only credentials, so validate its
+        // workspace before reusing it. This keeps Grail Computer as the
+        // default even if an older invocation cached another workspace.
         if !refresh {
             if let Some(creds) = auth::cached() {
                 let s = Self {
@@ -39,12 +44,21 @@ impl Slack {
                     #[cfg(test)]
                     endpoint: None,
                 };
-                if s.raw("auth.test", &json!({}))?["ok"] == true {
+                let auth = s.raw("auth.test", &json!({}))?;
+                if auth["ok"] == true
+                    && (auth["team"]
+                        .as_str()
+                        .is_some_and(|name| name.eq_ignore_ascii_case(wanted))
+                        || auth["team_id"]
+                            .as_str()
+                            .is_some_and(|id| id.eq_ignore_ascii_case(wanted)))
+                {
                     return Ok(s);
                 }
             }
         }
         let (cookie, tokens) = auth::fresh()?;
+        let mut discovered = Vec::new();
         for token in tokens {
             let s = Self {
                 client: client.clone(),
@@ -55,12 +69,31 @@ impl Slack {
                     cookie: cookie.clone(),
                 },
             };
-            if s.raw("auth.test", &json!({}))?["ok"] == true {
+            let auth = s.raw("auth.test", &json!({}))?;
+            if auth["ok"] == true {
+                let team = auth["team"].as_str().unwrap_or("unknown");
+                let team_id = auth["team_id"].as_str().unwrap_or("");
+                discovered.push(format!("{team} ({team_id})"));
+                if !auth["team"]
+                    .as_str()
+                    .is_some_and(|name| name.eq_ignore_ascii_case(wanted))
+                    && !auth["team_id"]
+                        .as_str()
+                        .is_some_and(|id| id.eq_ignore_ascii_case(wanted))
+                {
+                    continue;
+                }
                 auth::save(&s.creds)?;
                 return Ok(s);
             }
         }
-        bail!("No valid Slack desktop session. Sign into Slack and retry slk auth --refresh")
+        if discovered.is_empty() {
+            bail!("No valid Slack desktop session found while selecting workspace {wanted}");
+        }
+        bail!(
+            "Workspace {wanted:?} was not found. Available workspaces: {}",
+            discovered.join(", ")
+        )
     }
     fn raw(&self, method: &str, params: &Value) -> Result<Value> {
         if !method
