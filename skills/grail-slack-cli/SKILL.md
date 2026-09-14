@@ -1,6 +1,6 @@
 ---
 name: grail-slack-cli
-description: Use the Grail Slack CLI (`slk`) for Slack reads, searches, threads, approved writes, edits, and file uploads on macOS. Apply whenever an agent needs Slack access in Grail Computer.
+description: Use this skill whenever a task requires access to Slack.
 ---
 
 # Grail Slack CLI
