@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grail Slack CLI"
+  short_description: "Use slk for Grail Slack access"
+  default_prompt: "Use the Grail Slack CLI for this Slack task. Verify the account first and read back any authorized write."

@@ -36,6 +36,19 @@ in new terminals. Existing npm users should check `which -a slk` and put
 `~/.local/bin` first in PATH. The Rust version can reuse the existing session
 cache. The old npm installation is no longer required.
 
+### Install the agent skill
+
+Agents should install the repository skill alongside the CLI so Slack work uses
+the native `slk` workflow:
+
+```sh
+mkdir -p "$HOME/.agents/skills"
+cp -R skills/grail-slack-cli "$HOME/.agents/skills/grail-slack-cli"
+```
+
+Repeat the copy after updating this repository so the global skill matches the
+checked-in version.
+
 The downloads are ad-hoc signed, **not Apple-notarized**. macOS may block a
 browser download. After verifying the release and checksum, allow that specific
 binary in System Settings → Privacy & Security. If macOS still quarantines the
