@@ -1,6 +1,8 @@
 # Working on Slack CLI
 
 Read README.md for installation, authentication, command semantics and limitations.
+When setting up an agent, also install `skills/grail-slack-cli` into
+`$HOME/.agents/skills/grail-slack-cli` as described in the README.
 This repository is public. Keep real messages, cookies, tokens, databases and
 Keychain material out of code, fixtures, issues, logs and release artifacts.
 
