@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          check-latest: true
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./...
+      - name: Validate goreleaser config
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: check
+
+  skill:
+    name: Verify skill is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          check-latest: true
+      - name: Regenerate skills
+        run: go run ./cmd/slk generate-skills --output-dir skills
+      - name: Fail on drift
+        run: |
+          git add -A skills/
+          if ! git diff --cached --exit-code skills/; then
+            echo "::error::skills/ is out of date — run 'go run ./cmd/slk generate-skills' and commit."
+            exit 1
+          fi
+
+  version-sync:
+    name: Verify version-bearing files track VERSION
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fan VERSION into version-bearing files
+        run: ./scripts/sync-version.sh
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code SECURITY.md; then
+            echo "::error::SECURITY.md is out of date — run ./scripts/sync-version.sh and commit."
+            exit 1
+          fi
+
+  manifest:
+    name: Verify README manifest is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          check-latest: true
+      - name: Regenerate manifest
+        run: go run ./cmd/slk generate-manifest
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code README.md; then
+            echo "::error::README.md manifest is out of date — run 'go run ./cmd/slk generate-manifest' and commit."
+            exit 1
+          fi

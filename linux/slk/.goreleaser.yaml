@@ -1,0 +1,37 @@
+version: 2
+project_name: slk
+builds:
+  - main: ./cmd/slk
+    binary: slk
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+archives:
+  - formats: [tar.gz]
+    name_template: 'slk_{{ .Os }}_{{ .Arch }}'
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+changelog:
+  use: github-native
+release:
+  prerelease: auto
+brews:
+  - repository:
+      owner: howar31
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    # Do not push the formula on prereleases (tags containing "-");
+    # otherwise goreleaser would overwrite the stable tap formula with the
+    # prerelease, since the npm-only guard in release.yml does not cover brews.
+    skip_upload: "auto"
+    description: Agent-facing Slack CLI for AI agents.
+    license: MIT
+    homepage: https://github.com/howar31/slk
+    test: |
+      assert_match version.to_s, shell_output("#{bin}/slk --version")
