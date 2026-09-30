@@ -39,6 +39,8 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Download a private Slack file to a new local path.
+    Download { file_id: String, output: PathBuf },
     /// Verify the current account and workspace (never prints credentials)
     Auth {
         #[arg(long)]
@@ -255,6 +257,7 @@ fn run(cli: Cli) -> Result<Value> {
         cli.workspace.as_deref(),
     )?;
     match cli.command {
+        Command::Download{file_id,output}=>s.download(&file_id,&output),
         Command::Auth{..}=>s.api("auth.test",json!({})),
         Command::Channels=>s.list("conversations.list",json!({"types":"public_channel,private_channel","exclude_archived":true}),"channels",100_000),
         Command::Dms=>s.list("conversations.list",json!({"types":"im,mpim","exclude_archived":true}),"channels",100_000),

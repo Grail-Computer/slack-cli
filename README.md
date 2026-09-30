@@ -179,8 +179,18 @@ Example `request.json`:
 {"channel":"CHANNEL_ID","ts":"THREAD_TIMESTAMP","limit":100}
 ```
 
-Use `files.info` to inspect attachment metadata and sharing. File downloads are
-not a dedicated v1 command. See `slk --help` and `slk COMMAND --help` for options.
+Use `files.info` to inspect attachment metadata and sharing. Download screenshots,
+PDFs, and other private attachments using the same desktop session:
+
+```sh
+slk download FILE_ID /absolute/path/to/image.png
+```
+
+The output path must be new. Downloads use owner-only permissions, verify the
+size supplied by Slack, and leave no partial output after a failed download.
+Credentials are sent only to HTTPS `files.slack.com`; redirects are rejected.
+No Slack messages are sent and file sharing is unchanged.
+See `slk --help` and `slk COMMAND --help` for options.
 Aliases from the earlier CLI remain (`ch`, `dm`, `u`, `r`, `t`, `s`, `a`, `ur`,
 `star`, `sv`, `pin`). Output changed from decorated text to JSON. WhatsApp is now
 [its own CLI](https://github.com/Grail-Computer/whatsapp-cli), `wacli`.

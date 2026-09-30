@@ -26,7 +26,68 @@ pub fn form(params: &Value) -> Vec<(String, String)> {
         })
         .collect()
 }
+fn validate_download_url(url: &str) -> Result<()> {
+    let parsed = reqwest::Url::parse(url).map_err(|_| anyhow::anyhow!("Invalid download URL"))?;
+    if parsed.scheme() != "https"
+        || parsed.host_str() != Some("files.slack.com")
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+        || parsed.port_or_known_default() != Some(443)
+    {
+        bail!("Unexpected download host");
+    }
+    Ok(())
+}
+
+fn save_download(
+    mut response: reqwest::blocking::Response,
+    output: &Path,
+    expected: Option<u64>,
+) -> Result<u64> {
+    use std::io::Write;
+    if !response.status().is_success() {
+        bail!("Slack download HTTP {}", response.status());
+    }
+    let parent = output
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    // Tempfiles have owner-only permissions. Persist only complete downloads,
+    // without replacing existing files (including symlinks).
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    let bytes = std::io::copy(&mut response, &mut file)
+        .map_err(|_| anyhow::anyhow!("Slack download body read failed"))?;
+    if expected.is_some_and(|size| bytes != size) {
+        bail!("Download size mismatch");
+    }
+    file.flush()?;
+    file.as_file().sync_all()?;
+    file.persist_noclobber(output)
+        .map_err(|e| anyhow::anyhow!("Cannot save download: {}", e.error))?;
+    Ok(bytes)
+}
+
 impl Slack {
+    pub fn download(&self, file_id: &str, output: &Path) -> Result<Value> {
+        if output.try_exists()? {
+            bail!("Output already exists; choose a new path");
+        }
+        let info = self.api("files.info", json!({"file":file_id}))?;
+        let url = info["file"]["url_private_download"]
+            .as_str()
+            .or_else(|| info["file"]["url_private"].as_str())
+            .context("No download URL")?;
+        validate_download_url(url)?;
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.creds.token)
+            .header("Cookie", format!("d={}", self.creds.cookie))
+            .send()
+            .map_err(|_| anyhow::anyhow!("Slack download network error"))?;
+        let bytes = save_download(response, output, info["file"]["size"].as_u64())?;
+        Ok(json!({"ok":true,"file":file_id,"bytes":bytes,"output":output}))
+    }
     pub fn new(refresh: bool, workspace: Option<&str>) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(60))
@@ -344,6 +405,61 @@ mod tests {
             worker,
         )
     }
+    #[test]
+    fn downloads_reject_untrusted_credential_destinations() {
+        assert!(validate_download_url("https://files.slack.com/files-pri/T1-F1/image.png").is_ok());
+        for url in [
+            "http://files.slack.com/file",
+            "https://files.slack.com.evil.test/file",
+            "https://evil.test/file",
+            "https://user@files.slack.com/file",
+            "https://files.slack.com:444/file",
+        ] {
+            assert!(validate_download_url(url).is_err());
+        }
+    }
+
+    #[test]
+    fn download_is_complete_private_and_never_overwrites() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("image.png");
+        let payload = "synthetic-image-bytes";
+        let (s, worker) = mock(vec![payload.into()]);
+        let response = s.client.get(s.endpoint.as_ref().unwrap()).send().unwrap();
+        assert_eq!(
+            save_download(response, &output, Some(payload.len() as u64)).unwrap(),
+            payload.len() as u64
+        );
+        worker.join().unwrap();
+        assert_eq!(std::fs::read(&output).unwrap(), payload.as_bytes());
+        assert_eq!(
+            std::fs::metadata(&output).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        let (s, worker) = mock(vec!["replacement".into()]);
+        let response = s.client.get(s.endpoint.as_ref().unwrap()).send().unwrap();
+        assert!(save_download(response, &output, None).is_err());
+        worker.join().unwrap();
+        assert_eq!(std::fs::read(&output).unwrap(), payload.as_bytes());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn truncated_download_leaves_no_output_or_tempfile() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("image.png");
+        let (s, worker) = mock(vec!["short".into()]);
+        let response = s.client.get(s.endpoint.as_ref().unwrap()).send().unwrap();
+        assert!(save_download(response, &output, Some(100))
+            .unwrap_err()
+            .to_string()
+            .contains("size mismatch"));
+        worker.join().unwrap();
+        assert!(!output.exists());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
     #[test]
     fn cursor_paging_keeps_dynamic_result_key_and_limits() {
         let (s,worker)=mock(vec![json!({"ok":true,"messages":[{"ts":"1"}],"response_metadata":{"next_cursor":"next-page"}}).to_string(),json!({"ok":true,"messages":[{"ts":"2"}],"response_metadata":{"next_cursor":""}}).to_string()]);
