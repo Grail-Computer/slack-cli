@@ -236,6 +236,27 @@ SQLite files owned by another process. Turso's [compatibility guide](https://git
 explicitly excludes mixed SQLite/Turso multi-process access. This choice adds no
 installation dependency for users.
 
+## Linux
+
+The `main` branch and its releases are macOS-only: authentication depends on
+Slack Desktop and the macOS Keychain. Linux is served by a separate Go CLI kept
+on the [`linux-agent-footer`](https://github.com/Grail-Computer/slack-cli/tree/linux-agent-footer)
+branch under `linux/slk`. It is based on [howar31/slk](https://github.com/howar31/slk)
+v0.8.1, authenticates with its own Slack OAuth token instead of Slack Desktop,
+and appends the same `Sent by Agent` footer to outgoing messages.
+
+```sh
+git switch linux-agent-footer
+cd linux/slk
+go test ./...
+go build -trimpath -ldflags='-s -w' -o slk ./cmd/slk
+./slk auth set-token
+```
+
+Building needs Go 1.25+. The two implementations do not share code, so the
+branch is maintained alongside `main` and is not merged into it. See
+`linux/README.md` and `linux/slk/README.md` on that branch for details.
+
 ## License and provenance
 
 MIT. Rust implementation maintained by Grail Computer, based on the workflows
